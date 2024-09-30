@@ -34,30 +34,30 @@ uint8_t DALLAS_PIN =23;
 uint8_t SCL_PIN = 5;
 uint8_t SDA_PIN = 4;
 uint8_t DALLAS_PIN =13;
-// uint8_t RST_PIN = 16; // Uncoment for Heltec WiFi-Kit-8
+// uint8_t RST_PIN = 16; // Un-comment for Heltec WiFi-Kit-8
 #endif
 
 //The SCL and SDA pins are defined here.
 //ESP8266 Wemos D1 mini board use SCL=5 SDA=4 while ESP32 Wemos32 mini board use SCL=22 SDA=21
 #define U8X8_PIN_SCL SCL_PIN
 #define U8X8_PIN_SDA SDA_PIN
-//#define U8X8_PIN_RESET RST_PIN // Uncoment for Heltec WiFi-Kit-8
+//#define U8X8_PIN_RESET RST_PIN // Un-comment for Heltec WiFi-Kit-8
 
 // Dallas sensor reading timer
 long temptimer = millis();
 long lastMeasure = 0;
-#define Celsius // Show temperature mesaurement in Celcius otherwise is in Fahrenheit 
+#define Celsius // Show temperature measurement in Celsius otherwise is in Fahrenheit 
 
 // If display does not work or looks corrupted check the
 // constructor reference:
 // https://github.com/olikraus/u8g2/wiki/u8x8setupcpp
 // or check the gallery:
 // https://github.com/olikraus/u8g2/wiki/gallery
-// --> First choise of cheap I2C OLED 128X32 0.91"
+// --> First choice of cheap I2C OLED 128X32 0.91"
 U8X8_SSD1306_128X32_UNIVISION_HW_I2C u8x8(U8X8_PIN_NONE, U8X8_PIN_SCL, U8X8_PIN_SDA); // Pins are Reset, SCL, SDA
-// --> Second choise of cheap I2C OLED 128X64 0.96" or 1.3"
+// --> Second choice of cheap I2C OLED 128X64 0.96" or 1.3"
 //U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(U8X8_PIN_NONE, U8X8_PIN_SCL, U8X8_PIN_SDA); // Pins are Reset, SCL, SDA
-// --> Third choise of Heltec WiFi-Kit-8 OLED 128X32 0.91"
+// --> Third choice of Heltec WiFi-Kit-8 OLED 128X32 0.91"
 //U8X8_SSD1306_128X32_UNIVISION_HW_I2C u8x8(U8X8_PIN_RESET, U8X8_PIN_SCL, U8X8_PIN_SDA); // Constructor for Heltec WiFi-Kit-8
 // gets called once at boot. Do all initialization that doesn't depend on network here
 void userSetup() {
@@ -97,15 +97,16 @@ void userLoop() {
 
 //----> Dallas temperature sensor MQTT publishing
   temptimer = millis();  
-// Timer to publishe new temperature every 60 seconds
+// Timer to publish new temperature every 60 seconds
   if (temptimer - lastMeasure > 60000) 
   {
     lastMeasure = temptimer;    
+#ifndef WLED_DISABLE_MQTT
 //Check if MQTT Connected, otherwise it will crash the 8266
     if (mqtt != nullptr)
     {
 //      Serial.println(Dallas(DALLAS_PIN,0));
-//Gets prefered temperature scale based on selection in definitions section
+//Gets preferred temperature scale based on selection in definitions section
         #ifdef Celsius
         int16_t board_temperature = Dallas(DALLAS_PIN,0);
         #else
@@ -116,6 +117,7 @@ void userLoop() {
         t += "/temperature";
         mqtt->publish(t.c_str(), 0, true, String(board_temperature).c_str());
     }
+  #endif
   }
 
   // Check if we time interval for redrawing passes.
@@ -171,11 +173,11 @@ void userLoop() {
   // First row with Wifi name
   u8x8.setCursor(1, 0);
   u8x8.print(knownSsid.substring(0, u8x8.getCols() > 1 ? u8x8.getCols() - 2 : 0));
-  // Print `~` char to indicate that SSID is longer, than owr dicplay
+  // Print `~` char to indicate that SSID is longer than our display
   if (knownSsid.length() > u8x8.getCols())
     u8x8.print("~");
 
-  // Second row with IP or Psssword
+  // Second row with IP or Password
   u8x8.setCursor(1, 1);
   // Print password in AP mode and if led is OFF.
   if (apActive && bri == 0)
@@ -185,58 +187,14 @@ void userLoop() {
 
   // Third row with mode name
   u8x8.setCursor(2, 2);
-  uint8_t qComma = 0;
-  bool insideQuotes = false;
-  uint8_t printedChars = 0;
-  char singleJsonSymbol;
+  char lineBuffer[17];
+  extractModeName(knownMode, JSON_mode_names, lineBuffer, 16);
+  u8x8.print(lineBuffer);
 
-  // Find the mode name in JSON
-  for (size_t i = 0; i < strlen_P(JSON_mode_names); i++) {
-    singleJsonSymbol = pgm_read_byte_near(JSON_mode_names + i);
-    switch (singleJsonSymbol) {
-    case '"':
-      insideQuotes = !insideQuotes;
-      break;
-    case '[':
-    case ']':
-      break;
-    case ',':
-      qComma++;
-    default:
-      if (!insideQuotes || (qComma != knownMode))
-        break;
-      u8x8.print(singleJsonSymbol);
-      printedChars++;
-    }
-    if ((qComma > knownMode) || (printedChars > u8x8.getCols() - 2))
-      break;
-  }
   // Fourth row with palette name
   u8x8.setCursor(2, 3);
-  qComma = 0;
-  insideQuotes = false;
-  printedChars = 0;
-  // Looking for palette name in JSON.
-  for (size_t i = 0; i < strlen_P(JSON_palette_names); i++) {
-    singleJsonSymbol = pgm_read_byte_near(JSON_palette_names + i);
-    switch (singleJsonSymbol) {
-    case '"':
-      insideQuotes = !insideQuotes;
-      break;
-    case '[':
-    case ']':
-      break;
-    case ',':
-      qComma++;
-    default:
-      if (!insideQuotes || (qComma != knownPalette))
-        break;
-      u8x8.print(singleJsonSymbol);
-      printedChars++;
-    }
-    if ((qComma > knownMode) || (printedChars > u8x8.getCols() - 2))
-      break;
-  }
+  extractModeName(knownPalette, JSON_palette_names, lineBuffer, 16);
+  u8x8.print(lineBuffer);
 
   u8x8.setFont(u8x8_font_open_iconic_embedded_1x1);
   u8x8.drawGlyph(0, 0, 80); // wifi icon

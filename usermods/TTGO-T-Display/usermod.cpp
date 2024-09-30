@@ -3,7 +3,7 @@
  * This file allows you to add own functionality to WLED more easily
  * See: https://github.com/Aircoookie/WLED/wiki/Add-own-functionality
  * EEPROM bytes 2750+ are reserved for your custom use case. (if you extend #define EEPSIZE in const.h)
- * bytes 2400+ are currently ununsed, but might be used for future wled features
+ * bytes 2400+ are currently unused, but might be used for future wled features
  */
 
 /*
@@ -144,7 +144,7 @@ void userLoop() {
   // First row with Wifi name
   tft.setCursor(1, 1);
   tft.print(knownSsid.substring(0, tftcharwidth > 1 ? tftcharwidth - 1 : 0));
-  // Print `~` char to indicate that SSID is longer, than our dicplay
+  // Print `~` char to indicate that SSID is longer than our display
   if (knownSsid.length() > tftcharwidth)
     tft.print("~");
 
@@ -177,58 +177,15 @@ void userLoop() {
 
   // Third row with mode name
   tft.setCursor(1, 68);
-  uint8_t qComma = 0;
-  bool insideQuotes = false;
-  uint8_t printedChars = 0;
-  char singleJsonSymbol;
-  // Find the mode name in JSON
-  for (size_t i = 0; i < strlen_P(JSON_mode_names); i++) {
-    singleJsonSymbol = pgm_read_byte_near(JSON_mode_names + i);
-    switch (singleJsonSymbol) {
-    case '"':
-      insideQuotes = !insideQuotes;
-      break;
-    case '[':
-    case ']':
-      break;
-    case ',':
-      qComma++;
-    default:
-      if (!insideQuotes || (qComma != knownMode))
-        break;
-      tft.print(singleJsonSymbol);
-      printedChars++;
-    }
-    if ((qComma > knownMode) || (printedChars > tftcharwidth - 1))
-      break;
-  }
+  char lineBuffer[tftcharwidth+1];
+  extractModeName(knownMode, JSON_mode_names, lineBuffer, tftcharwidth);
+  tft.print(lineBuffer);
+
   // Fourth row with palette name
   tft.setCursor(1, 90);
-  qComma = 0;
-  insideQuotes = false;
-  printedChars = 0;
-  // Looking for palette name in JSON.
-  for (size_t i = 0; i < strlen_P(JSON_palette_names); i++) {
-    singleJsonSymbol = pgm_read_byte_near(JSON_palette_names + i);
-    switch (singleJsonSymbol) {
-    case '"':
-      insideQuotes = !insideQuotes;
-      break;
-    case '[':
-    case ']':
-      break;
-    case ',':
-      qComma++;
-    default:
-      if (!insideQuotes || (qComma != knownPalette))
-        break;
-      tft.print(singleJsonSymbol);
-      printedChars++;
-    }
-    // The following is modified from the code from the u8g2/u8g8 based code (knownPalette was knownMode)
-    if ((qComma > knownPalette) || (printedChars > tftcharwidth - 1))
-      break;
-  }
+  extractModeName(knownPalette, JSON_palette_names, lineBuffer, tftcharwidth);
+  tft.print(lineBuffer);
+
   // Fifth row with estimated mA usage
   tft.setCursor(1, 112);
   // Print estimated milliamp usage (must specify the LED type in LED prefs for this to be a reasonable estimate).

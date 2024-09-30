@@ -30,7 +30,7 @@
 #define USERMOD_SN_PHOTORESISTOR_RESISTOR_VALUE 10000.0f
 #endif
 
-// only report if differance grater than offset value
+// only report if difference grater than offset value
 #ifndef USERMOD_SN_PHOTORESISTOR_OFFSET_VALUE
 #define USERMOD_SN_PHOTORESISTOR_OFFSET_VALUE 5
 #endif
@@ -109,6 +109,7 @@ public:
     {
       lastLDRValue = currentLDRValue;
 
+#ifndef WLED_DISABLE_MQTT
       if (WLED_MQTT_CONNECTED)
       {
         char subuf[45];
@@ -121,6 +122,7 @@ public:
         DEBUG_PRINTLN("Missing MQTT connection. Not publishing data");
       }
     }
+#endif
   }
 
   uint16_t getLastLDRValue()
